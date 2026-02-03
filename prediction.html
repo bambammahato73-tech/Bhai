@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PROFIT MAKER | ULTRA AI v6.0</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#000508; --panel:rgba(5,12,20,.95);
+  --green:#00ff88; --red:#ff0040; --blue:#00ccff;
+  --yellow:#ffd700; --txt:#c0e0ff;
+  --mono:'Share Tech Mono', monospace; --head:'Orbitron', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:radial-gradient(800px 400px at 50% 0%,rgba(0,204,255,.12),transparent 60%),var(--bg);
+  color:var(--txt); font-family:Rajdhani; height:100vh; overflow:hidden;
+}
+.container{max-width:550px;margin:auto;padding:14px;height:100vh;display:flex;flex-direction:column}
+.header{text-align:center;border-bottom:1px solid rgba(0,255,136,.2);padding-bottom:10px}
+.header h1{
+  font-family:var(--head);letter-spacing:2px;
+  background:linear-gradient(90deg,var(--green),var(--blue));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.badge{font-size:11px;font-family:var(--mono);color:var(--green)}
+.target-box{
+  margin:10px 0;padding:8px;text-align:center;
+  border:1px solid var(--green);border-radius:6px;
+  font-family:var(--mono)
+}
+.target-box select{
+  background:#000;color:var(--yellow);
+  border:1px solid var(--yellow);
+  padding:6px;border-radius:4px;
+}
+.card{
+  background:var(--panel);border:1px solid rgba(0,204,255,.3);
+  border-radius:8px;padding:14px;
+}
+.row{display:flex;justify-content:space-between;font-family:var(--mono);color:var(--yellow)}
+.wallet{border:1px solid var(--yellow);padding:4px 10px;border-radius:20px}
+.pred{text-align:center;margin:18px 0}
+.pred span{font-family:var(--head);font-size:56px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat{background:rgba(255,255,255,.05);padding:8px;text-align:center;font-family:var(--mono)}
+.stat b{color:var(--yellow)}
+.history{
+  margin-top:10px;flex:1;overflow-y:auto;
+  background:var(--panel);border-radius:8px;padding:10px
+}
+.hist-row{
+  display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:12px;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)
+}
+.win{color:var(--green)} .loss{color:var(--red)}
+</style>
+</head>
+
+<body>
+
+<div style="position:fixed;top:12px;right:12px;z-index:999">
+  <button onclick="history.back()"
+    style="padding:8px 14px;border-radius:20px;
+    border:1px solid #ffd700;background:transparent;
+    color:#ffd700;cursor:pointer;">
+    ⬅ Back
+  </button>
+</div>
+<div class="container">
+
+  <div class="header">
+    <h1>PROFIT MAKER</h1>
+    <div class="badge">AI CORE v6.0 • REAL 60s API</div>
+  </div>
+
+  <!-- TARGET SELECT -->
+  <div class="target-box">
+    TARGET :
+    <select id="targetSelect">
+      <option value="">SELECT TARGET</option>
+      <option value="100-500">₹100 → ₹500</option>
+      <option value="300-1500">₹300 → ₹1500</option>
+      <option value="500-2500">₹500 → ₹2500</option>
+      <option value="800-3500">₹800 → ₹3500</option>
+      <option value="1200-8000">₹1200 → ₹8000</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <span>PERIOD: <span id="period">----</span></span>
+      <div class="wallet">₹<span id="balance">0</span></div>
+    </div>
+
+    <div class="pred"><span id="prediction">--</span></div>
+
+    <div class="stats">
+      <div class="stat">LEVEL<br><b id="level">1</b></div>
+      <div class="stat">BET<br><b id="betAmount">₹0</b></div>
+      <div class="stat">STATUS<br><b id="status">WAIT</b></div>
+    </div>
+  </div>
+
+  <div class="history" id="historyList"></div>
+
+</div>
+
+<script>
+const sel = localStorage.getItem("selected_target");
+const pay = localStorage.getItem("payment_status");
+
+if(!sel || !pay){
+  window.location.href = "target.html";
+}
+/* ===== API (UNCHANGED) ===== */
+const API="https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json";
+
+/* ===== TARGETS ===== */
+const TARGETS={
+  "100-500":100,
+  "300-1500":300,
+  "500-2500":500,
+  "800-3500":800,
+  "1200-8000":1200
+};
+if(sel && TARGETS[sel]){
+  targetSelect.value = sel;
+  STATE.balance = TARGETS[sel];
+  STATE.level = 1;
+  balance.textContent = STATE.balance;
+  level.textContent = 1;
+  betAmount.textContent = "₹" + calcBet();
+}
+/* ===== STATE ===== */
+const STATE={
+  balance:0,
+  level:1,
+  lastIssue:null,
+  pending:null
+};
+
+/* ===== TARGET SELECT ===== */
+targetSelect.onchange=e=>{
+  const start=TARGETS[e.target.value];
+  if(!start) return;
+  STATE.balance=start;
+  STATE.level=1;
+  balance.textContent=STATE.balance;
+  level.textContent=1;
+  betAmount.textContent="₹"+calcBet();
+};
+
+/* =========================================================
+   ===== ULTRA AI PREDICTION (UPGRADED) =====================
+   Uses: recent bias + overall bias + transition matrix
+         + streak mean-reversion + pattern micro-boost
+   Output: "BIG" or "SMALL"
+   ========================================================= */
+
+function sideOf(num){
+  return Number(num) >= 5 ? "BIG" : "SMALL";
+}
+function clamp(x,min,max){
+  return Math.max(min, Math.min(max, x));
+}
+function countBig(arr){
+  let c=0; for(let i=0;i<arr.length;i++) if(arr[i]==="BIG") c++;
+  return c;
+}
+function getStreak(outcomes){
+  const first = outcomes[0];
+  let len = 1;
+  while(len < outcomes.length && outcomes[len] === first) len++;
+  return { side:first, len };
+}
+function buildTransitions(outcomes){
+  // outcomes: [latest ... older]
+  let bb=0, bs=0, sb=0, ss=0;
+  for(let i=1;i<outcomes.length;i++){
+    const older = outcomes[i];
+    const newer = outcomes[i-1];
+    if(older==="BIG" && newer==="BIG") bb++;
+    else if(older==="BIG" && newer==="SMALL") bs++;
+    else if(older==="SMALL" && newer==="BIG") sb++;
+    else ss++;
+  }
+  const bigFromBig = (bb+bs) ? (bb/(bb+bs)) : 0.5;     // P(newer=BIG | older=BIG)
+  const bigFromSmall = (sb+ss) ? (sb/(sb+ss)) : 0.5;  // P(newer=BIG | older=SMALL)
+  return { bigFromBig, bigFromSmall, sample: bb+bs+sb+ss };
+}
+
+function generatePrediction(list){
+  // safety
+  if(!list || !list.length) return "BIG";
+
+  // take more history for better stats
+  const MAX = Math.min(list.length, 80);
+  const outcomes = [];
+  for(let i=0;i<MAX;i++){
+    outcomes.push(sideOf(list[i].number));
+  }
+
+  const current = outcomes[0];
+
+  // windows
+  const RECENT_N = Math.min(12, outcomes.length);
+  const MID_N    = Math.min(30, outcomes.length);
+  const recent = outcomes.slice(0, RECENT_N);
+  const mid    = outcomes.slice(0, MID_N);
+
+  const recentBig = countBig(recent) / RECENT_N;
+  const midBig    = countBig(mid) / MID_N;
+  const overallBig= countBig(outcomes) / outcomes.length;
+
+  // transition (markov-ish)
+  const T = buildTransitions(outcomes);
+  let pTrans = 0.5;
+  if(T.sample >= 12){
+    pTrans = (current==="BIG") ? T.bigFromBig : T.bigFromSmall;
+  }
+
+  // base ensemble (weighted)
+  // transition gets slightly more weight (adaptive), then recent, then mid/overall
+  let pBig =
+    0.42 * pTrans +
+    0.30 * recentBig +
+    0.18 * midBig +
+    0.10 * overallBig;
+
+  // streak control (mean reversion after long streaks)
+  const streak = getStreak(outcomes);
+  if(streak.len >= 4){
+    const adj = Math.min(0.26, 0.06 * (streak.len - 3)); // grows with streak
+    if(streak.side === "BIG") pBig -= adj;
+    else pBig += adj;
+  } else if(streak.len === 3){
+    // mild nudge only
+    const adj = 0.05;
+    if(streak.side === "BIG") pBig -= adj;
+    else pBig += adj;
+  }
+
+  // micro-pattern boosts (small, controlled)
+  // pattern: XXY (two same then flip) -> small chance to continue flip
+  if(outcomes.length >= 3){
+    const a=outcomes[0], b=outcomes[1], c=outcomes[2];
+
+    // if just started streak of 2, tiny momentum
+    if(a===b && b!==c){
+      if(a==="BIG") pBig += 0.03;
+      else pBig -= 0.03;
+    }
+
+    // zigzag ABA tends to keep alternating sometimes
+    if(a===c && a!==b){
+      if(b==="BIG") pBig += 0.02; // predict opposite of middle
+      else pBig -= 0.02;
+    }
+  }
+
+  // clamp and decide
+  pBig = clamp(pBig, 0.02, 0.98);
+  return (pBig >= 0.5) ? "BIG" : "SMALL";
+}
+
+/* ===== BET CALC (PERCENT WALLET) ===== */
+function calcBet(){
+  let bet=0;
+  if(STATE.level===1) bet=STATE.balance*0.16;
+  else if(STATE.level===2) bet=STATE.balance*0.35;
+  else bet=STATE.balance; // ALL IN
+  bet=Math.floor(bet);
+  if(bet<1) bet=STATE.balance;
+  return bet;
+}
+
+/* ===== HISTORY ===== */
+function addHistory(p,pick,bet,won){
+  const r=document.createElement("div");
+  r.className="hist-row "+(won?"win":"loss");
+  r.innerHTML=`
+    <span>${p}</span>
+    <span>${pick}</span>
+    <span>₹${bet}</span>
+    <span>${won?"WIN":"LOSS"}</span>
+  `;
+  historyList.prepend(r);
+}
+
+/* ===== GAME LOOP (60s) ===== */
+async function gameLoop(){
+  try{
+    const res=await fetch(API);
+    const data=await res.json();
+    const list=data?.data?.list;
+    if(!list) return;
+
+    const issue=list[0].issueNumber;
+    period.textContent=(BigInt(issue)+1n).toString().slice(-4);
+
+    if(STATE.lastIssue!==issue){
+
+      // CHECK RESULT
+      if(STATE.pending){
+        const result=list[0].number>=5?"BIG":"SMALL";
+        const won=result===STATE.pending.pick;
+
+        if(won){
+          STATE.balance+=STATE.pending.bet*0.98;
+          STATE.level=1;
+          status.textContent="WIN";
+          status.className="win";
+        }else{
+          STATE.balance-=STATE.pending.bet;
+          STATE.level++;
+          if(STATE.level>3) STATE.level=1;
+          status.textContent="LOSS";
+          status.className="loss";
+        }
+
+        balance.textContent=Math.floor(STATE.balance);
+        addHistory(period.textContent,STATE.pending.pick,STATE.pending.bet,won);
+      }
+
+      STATE.lastIssue=issue;
+
+      // NEW BET FROM UPDATED BALANCE
+      const bet=calcBet();
+      const pick=generatePrediction(list);
+
+      STATE.pending={pick,bet};
+
+      prediction.textContent=pick;
+      betAmount.textContent="₹"+bet;
+      level.textContent=STATE.level;
+    }
+  }catch(e){}
+}
+
+setInterval(gameLoop,60000);
+gameLoop();
+</script>
+
+</body>
+</html>
